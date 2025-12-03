@@ -1,5 +1,6 @@
 import yaml
 import logging
+import base64
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +24,10 @@ class ConfigLoader:
     def resolve_parameters(params, team_name, env, profile, region):
         """
         Resolve parameters:
-        - SSM parameters replaced with actual values
-        - Secrets replaced with CFN dynamic reference
+        - Fetch SSM parameter values
+        - Fetch Secrets Manager secrets as actual values
         """
-        # Lazy imports to avoid circular import issues
+        # Lazy imports to avoid circular import
         from cf_deployer.aws_client import get_ssm_client, get_secrets_client
 
         ssm = get_ssm_client(profile, region)
@@ -46,8 +47,11 @@ class ConfigLoader:
 
                 if val.startswith("SECRET:"):
                     secret_name = val[7:]
-                    # CloudFormation dynamic reference, safe
-                    return f"{{{{resolve:secretsmanager:{secret_name}}}}}"
+                    resp = secrets.get_secret_value(SecretId=secret_name)
+                    if "SecretString" in resp:
+                        return resp["SecretString"]
+                    else:
+                        return base64.b64decode(resp["SecretBinary"]).decode("utf-8")
 
             return val
 

@@ -71,7 +71,7 @@ def run_deployment(env, team=None, stack=None, dry_run=False):
                 logger.info(f"Waiting for SSM parameters: {ssm_refs}")
                 wait_for_ssm_parameters(ssm, ssm_refs)
 
-            # Resolve parameters (SSM + Secrets dynamic refs)
+            # Resolve parameters (SSM + Secrets direct fetch)
             resolved_params = ConfigLoader.resolve_parameters(
                 s.get("parameters", {}),
                 team_name,
@@ -80,8 +80,12 @@ def run_deployment(env, team=None, stack=None, dry_run=False):
                 region
             )
 
+            # Mask secrets for logging
+            masked_params = {k: ("***" if isinstance(v, str) and "SECRET:" in str(s.get("parameters", {}).get(k, "")) else v)
+                             for k, v in resolved_params.items()}
+
             if dry_run:
-                logger.info(f"[Dry-Run] Would deploy {stack_name} with: {resolved_params}")
+                logger.info(f"[Dry-Run] Would deploy {stack_name} with: {masked_params}")
                 continue
 
             # Deploy stack
