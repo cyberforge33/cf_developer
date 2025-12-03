@@ -10,31 +10,40 @@ def confirm(prompt: str) -> bool:
         ans = input(f"{Fore.YELLOW}{prompt} [y/n]: {Style.RESET_ALL}").lower()
         if ans in ["y", "yes"]:
             return True
-        if ans in ["n", "no"]:
+        elif ans in ["n", "no"]:
             return False
 
 def main():
-    parser = argparse.ArgumentParser(description="cf-deployer")
-    parser.add_argument("command", choices=["deploy"])
-    parser.add_argument("-e", "--env", required=True)
-    parser.add_argument("-t", "--team")
-    parser.add_argument("-s", "--stack")
-    parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--yes", action="store_true")
+    parser = argparse.ArgumentParser(
+        description="cf-deployer: Deploy CloudFormation stacks"
+    )
+    parser.add_argument("command", choices=["deploy"], help="Command to execute")
+    parser.add_argument("-e", "--env", required=True, help="Environment (dev/test/prod)")
+    parser.add_argument("-t", "--team", help="Specific team to deploy (optional)")
+    parser.add_argument("-s", "--stack", help="Specific stack to deploy (optional)")
+    parser.add_argument("--dry-run", action="store_true", help="Show what would be deployed")
+    parser.add_argument("--yes", action="store_true", help="Skip confirmations")
 
     args = parser.parse_args()
 
     if args.command == "deploy":
         if not args.yes:
-            if not confirm(f"Deploy env '{args.env}'" +
-                           (f", team '{args.team}'" if args.team else "") +
-                           "?"):
-                print(Fore.RED + "Deployment aborted.")
+            confirmed = confirm(
+                f"Proceed to deploy environment '{args.env}'"
+                + (f", team '{args.team}'" if args.team else "") + "?"
+            )
+            if not confirmed:
+                print(f"{Fore.RED}Deployment aborted by user.{Style.RESET_ALL}")
                 sys.exit(0)
 
-        print(Fore.GREEN + f"Starting deployment for env {args.env}...")
-        deployer.run_deployment(args.env, args.team, args.stack, args.dry_run)
-        print(Fore.GREEN + "Deployment finished successfully.")
+        print(f"{Fore.GREEN}Starting deployment for environment '{args.env}'...{Style.RESET_ALL}")
+        deployer.run_deployment(
+            env=args.env,
+            team=args.team,
+            stack=args.stack,
+            dry_run=args.dry_run
+        )
+        print(f"{Fore.GREEN}Deployment finished successfully.{Style.RESET_ALL}")
 
 if __name__ == "__main__":
     main()

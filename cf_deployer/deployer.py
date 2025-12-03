@@ -15,6 +15,9 @@ def handle_interrupt(signum, frame):
 signal.signal(signal.SIGINT, handle_interrupt)
 
 def wait_for_ssm_parameters(ssm_client, parameter_paths, timeout=300):
+    """
+    Wait until all specified SSM parameters exist.
+    """
     start = time.time()
     while True:
         all_exist = True
@@ -33,6 +36,9 @@ def wait_for_ssm_parameters(ssm_client, parameter_paths, timeout=300):
         time.sleep(5)
 
 def run_deployment(env, team=None, stack=None, dry_run=False):
+    """
+    Deploy all stacks for environment/team/stack with SSM & Secrets support.
+    """
     cfg = ConfigLoader.load(f"configs/{env}.yaml")
     profile = cfg["aws_profile"]
     region = cfg["region"]
@@ -41,9 +47,9 @@ def run_deployment(env, team=None, stack=None, dry_run=False):
     manager = StackManager(cf)
     ssm = get_ssm_client(profile, region)
 
-    teams = {team: cfg["teams"][team]} if team else cfg["teams"]
+    teams_to_deploy = {team: cfg["teams"][team]} if team else cfg["teams"]
 
-    for team_name, team_cfg in teams.items():
+    for team_name, team_cfg in teams_to_deploy.items():
         logger.info(f"Deploying team {team_name} in env {env}")
 
         for s in team_cfg["stacks"]:
@@ -59,7 +65,7 @@ def run_deployment(env, team=None, stack=None, dry_run=False):
                 logger.error(f"Template not found: {s['template']}")
                 continue
 
-            # Extract SSM refs BEFORE resolving params
+            # Wait for any SSM parameter references
             ssm_refs = ConfigLoader.extract_ssm_refs(s.get("parameters", {}))
             if ssm_refs:
                 logger.info(f"Waiting for SSM parameters: {ssm_refs}")
@@ -78,6 +84,7 @@ def run_deployment(env, team=None, stack=None, dry_run=False):
                 logger.info(f"[Dry-Run] Would deploy {stack_name} with: {resolved_params}")
                 continue
 
+            # Deploy stack
             manager.deploy(stack_name, template_body, resolved_params)
 
     logger.info(f"Deployment completed for {env}.")

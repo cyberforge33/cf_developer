@@ -8,6 +8,9 @@ class StackManager:
         self.cf = cf_client
 
     def exists(self, stack_name):
+        """
+        Check if a CloudFormation stack exists.
+        """
         try:
             self.cf.describe_stacks(StackName=stack_name)
             return True
@@ -18,6 +21,9 @@ class StackManager:
             raise
 
     def deploy(self, stack_name, template_body, parameters):
+        """
+        Deploy a stack: create if it doesn't exist, update if it does.
+        """
         params = [{"ParameterKey": k, "ParameterValue": str(v)} for k, v in parameters.items()]
 
         try:
@@ -47,6 +53,9 @@ class StackManager:
                 raise
 
     def wait(self, stack_name, waiter_type):
+        """
+        Wait for stack to complete.
+        """
         waiter = self.cf.get_waiter(waiter_type)
         try:
             logger.info(f"Waiting for {stack_name} ({waiter_type})...")
@@ -57,6 +66,9 @@ class StackManager:
             raise
 
     def get_outputs(self, stack_name):
+        """
+        Retrieve stack outputs.
+        """
         resp = self.cf.describe_stacks(StackName=stack_name)
         outputs = resp["Stacks"][0].get("Outputs", [])
         return {o["OutputKey"]: o["OutputValue"] for o in outputs}
