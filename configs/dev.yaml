@@ -6,8 +6,8 @@ teams:
       - name: VPC
         template: templates/vpc.yaml
         parameters:
-          serviceName: ""
-          CidrBlock: ""
+          serviceName: "SECRET:myapp/dev/db/password"
+          CidrBlock: "SSM:/myapp/dev/vpc/cidr"
       - name: PublicSubnets
         template: templates/public-subnets.yaml
         parameters:

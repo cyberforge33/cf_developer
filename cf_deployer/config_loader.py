@@ -1,42 +1,52 @@
 import yaml
-from cf_deployer.aws_client import get_ssm_client
 import logging
+from cf_deployer.aws_client import get_ssm_client, get_secrets_client
 
 logger = logging.getLogger(__name__)
 
 class ConfigLoader:
+
     @staticmethod
     def load(path):
-        """
-        Load environment YAML config.
-        """
         with open(path, "r") as f:
             cfg = yaml.safe_load(f)
 
-        required_keys = ["aws_profile", "region", "teams"]
-        for k in required_keys:
+        required = ["aws_profile", "region", "teams"]
+        for k in required:
             if k not in cfg:
                 raise ValueError(f"Missing required key in config: {k}")
+
         return cfg
 
     @staticmethod
     def resolve_parameters(params, team_name, env, profile, region):
-        """
-        Resolve parameters, replacing SSM references with actual values.
-        """
-        resolved = {}
         ssm = get_ssm_client(profile, region)
-        for key, val in params.items():
-            resolved[key] = ConfigLoader._resolve_value(val, ssm)
-        return resolved
+        secrets = get_secrets_client(profile, region)
+
+        def resolve(val):
+            if isinstance(val, dict):
+                return {k: resolve(v) for k, v in val.items()}
+            if isinstance(val, list):
+                return [resolve(v) for v in val]
+
+            if isinstance(val, str):
+                if val.startswith("SSM:"):
+                    path = val[4:]
+                    param = ssm.get_parameter(Name=path, WithDecryption=True)
+                    return param["Parameter"]["Value"]
+
+                if val.startswith("SECRET:"):
+                    secret_name = val[7:]
+                    return f"{{{{resolve:secretsmanager:{secret_name}}}}}"
+
+            return val
+
+        return {k: resolve(v) for k, v in params.items()}
 
     @staticmethod
-    def _resolve_value(val, ssm_client):
-        """
-        If the value is a string starting with 'SSM:', fetch from Parameter Store.
-        """
-        if isinstance(val, str) and val.startswith("SSM:"):
-            path = val[4:]
-            param = ssm_client.get_parameter(Name=path)
-            return param["Parameter"]["Value"]
-        return val
+    def extract_ssm_refs(params):
+        refs = []
+        for v in params.values():
+            if isinstance(v, str) and v.startswith("SSM:"):
+                refs.append(v[4:])
+        return refs
