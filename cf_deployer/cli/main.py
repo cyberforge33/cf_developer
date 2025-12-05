@@ -1,11 +1,17 @@
 import argparse
-from cf_deployer import deployer
 from colorama import Fore, Style, init
 import sys
+from cf_deployer.deployment import deployer
+import logging
 
 init(autoreset=True)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 def confirm(prompt: str) -> bool:
+    """
+    Ask user for yes/no confirmation.
+    """
     while True:
         ans = input(f"{Fore.YELLOW}{prompt} [y/n]: {Style.RESET_ALL}").lower()
         if ans in ["y", "yes"]:
@@ -33,17 +39,17 @@ def main():
                 + (f", team '{args.team}'" if args.team else "") + "?"
             )
             if not confirmed:
-                print(f"{Fore.RED}Deployment aborted by user.{Style.RESET_ALL}")
+                logger.info(f"{Fore.RED}Deployment aborted by user.{Style.RESET_ALL}")
                 sys.exit(0)
 
-        print(f"{Fore.GREEN}Starting deployment for environment '{args.env}'...{Style.RESET_ALL}")
+        logger.info(f"{Fore.GREEN}Starting deployment for environment '{args.env}'...{Style.RESET_ALL}")
         deployer.run_deployment(
             env=args.env,
             team=args.team,
             stack=args.stack,
             dry_run=args.dry_run
         )
-        print(f"{Fore.GREEN}Deployment finished successfully.{Style.RESET_ALL}")
+        logger.info(f"{Fore.GREEN}Deployment finished successfully.{Style.RESET_ALL}")
 
 if __name__ == "__main__":
     main()

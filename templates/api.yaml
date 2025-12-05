@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: API Stack for Backend Services
+
+Parameters:
+  DB_PASSWORD:
+    Type: String
+    NoEcho: true
+  ENV:
+    Type: String
+    Default: dev
+
+Resources:
+  ApiSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for API instances
+
+  ApiInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t3.micro
+      SecurityGroups:
+        - !Ref ApiSecurityGroup
+      ImageId: ami-0c94855ba95c71c99 # Example Amazon Linux 2
+      Tags:
+        - Key: Name
+          Value: !Sub "api-${ENV}"
+
+Outputs:
+  ApiInstanceId:
+    Description: ID of the API EC2 instance
+    Value: !Ref ApiInstance
+
+  ApiSecurityGroupId:
+    Description: ID of the security group
+    Value: !Ref ApiSecurityGroup
